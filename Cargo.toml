@@ -1,0 +1,55 @@
+[package]
+name = "DEN-Launcher"
+version = "2.0.0-beta2"
+edition = "2021"
+
+[dependencies]
+dotenv = "0.15.0"
+dotenv_codegen = "0.15.0"
+steamlocate = "2.0.0"
+tempfile = "3.15.0"
+tracing-appender = "0.2.3"
+tracing-panic = "0.1.2"
+zip = "2.2.2"
+zipsign-api = "0.1.2"
+semver = "1.0.25"
+self-replace = "1.5.0"
+const_format = "0.2.34"
+serde = "1.0.217"
+walkdir = "2.5.0"
+winreg = "0.55.0"
+cli_select = "0.1.6"
+
+[dependencies.sysinfo]
+version = "0.33.1"
+
+[dependencies.ureq]
+version = "2.12.1"
+features = ["json", "native-tls"]
+
+[dependencies.tracing]
+version = "0.1.40"
+features = ["max_level_debug", "release_max_level_info"]
+
+[dependencies.tracing-subscriber]
+version = "0.3.18"
+features = ["env-filter"]
+
+[dependencies.windows]
+version = "0.58.0"
+features = [
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_System_Threading",
+  "Win32_Security",
+  "Win32_System_Console",
+  "Win32_System_Memory",
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_LibraryLoader",
+]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true
