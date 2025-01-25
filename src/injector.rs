@@ -133,21 +133,22 @@ pub fn start_game() {
     unsafe {
         GetModuleHandleA(PCSTR("kernel32.dll\0".as_ptr()))
             .map(|kernel32| {
-                GetProcAddress(kernel32, PCSTR("LoadLibraryW\0".as_ptr())).is_some_and(
-                    |load_library| {
-                        CreateRemoteThread(
-                            process_info.hProcess,
-                            None,
-                            0,
-                            Some(std::mem::transmute(load_library)),
-                            Some(buffer),
-                            0,
-                            None,
-                        )
-                        .expect("Failed to create remote thread");
-                        true
-                    },
-                )
+                GetProcAddress(kernel32, PCSTR("LoadLibraryW\0".as_ptr())).map(|load_library| {
+                    CreateRemoteThread(
+                        process_info.hProcess,
+                        None,
+                        0,
+                        Some(std::mem::transmute(load_library)),
+                        Some(buffer),
+                        0,
+                        None,
+                    )
+                    .map(|handle| {
+                        tracing::info!("DLL injected, waiting for dllmain");
+                        windows::Win32::System::Threading::WaitForSingleObject(handle, 0xFFFFFFFF)
+                    })
+                    .expect("Failed to create remote thread")
+                })
             })
             .expect("Failed to get module handle");
     };
