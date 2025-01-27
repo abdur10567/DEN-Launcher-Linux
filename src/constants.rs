@@ -34,7 +34,7 @@ pub const ELDENRING_EXE: &str = "eldenring.exe";
 pub const SAVE_STEM: &str = "ER0000";
 
 pub static DEN_SAVE: LazyLock<String> =
-    LazyLock::new(|| SAVE_STEM.to_string() + "." + &*SAVE_EXTENSION);
+    LazyLock::new(|| SAVE_STEM.to_string() + "." + SAVE_EXTENSION.as_str());
 
 // constant 10.10.2024
 pub const OLD_SAVE_TIME_MARK: Duration = Duration::from_secs(1728507600u64);
