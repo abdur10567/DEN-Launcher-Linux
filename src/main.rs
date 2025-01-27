@@ -36,8 +36,12 @@ fn main() {
 
     tracing::info!("Starting Elden Ring...");
 
-    start_game();
-
-    tracing::info!("Done!");
-    std::thread::sleep(std::time::Duration::from_secs(5));
+    if let Err(err) = start_game() {
+        tracing::error!("Failed to start Elden Ring: {:?}", err);
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        std::process::exit(1);
+    } else {
+        tracing::info!("Elden Ring started successfully!");
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    }
 }
