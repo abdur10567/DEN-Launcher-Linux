@@ -82,6 +82,8 @@ pub fn start_game() -> Result<(), Box<dyn std::error::Error>> {
 
     // Set Steam App ID
     std::env::set_var("SteamAppId", ELDENRING_ID.to_string());
+    // Set Content Dir
+    std::env::set_var("DEN_CONTENT_DIR", parent_dir.join(&*CONTENT_DIR));
 
     // Create process
     let process_info = create_suspended_process(&executable_path)?;
