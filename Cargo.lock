@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "DEN-Launcher"
-version = "2.0.0-beta5"
+version = "2.0.0-beta6"
 dependencies = [
  "cli_select",
  "const_format",
