@@ -41,7 +41,7 @@ fn open_process_by_pid(pid: u32) -> Option<HANDLE> {
     .ok()
 }
 
-fn kill_process(pid: u32) {
+pub fn kill_process(pid: u32) {
     open_process_by_pid(pid).and_then(|handle| {
         unsafe { TerminateProcess(handle, 1) }
             .map_err(|err| tracing::error!("Failed to terminate process: {:?}", err))
@@ -49,7 +49,7 @@ fn kill_process(pid: u32) {
     });
 }
 
-fn get_pids_by_name(name: &str) -> Vec<u32> {
+pub fn get_pids_by_name(name: &str) -> Vec<u32> {
     let mut system = sysinfo::System::new();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     system

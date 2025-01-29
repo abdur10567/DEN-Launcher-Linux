@@ -13,7 +13,7 @@ use updater::start_updater;
 fn main() {
     dotenv::dotenv().ok();
 
-    enable_ansi_support().unwrap();
+    enable_ansi_support().ok();
 
     setup_logging();
 

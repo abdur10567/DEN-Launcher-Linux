@@ -1,6 +1,9 @@
 use std::io::{Seek, Write};
 
-use crate::constants::{CONTENT_DIR, DLL_NAME, REPO_NAME, REPO_OWNER, REPO_PRIVATE_KEY};
+use crate::{
+    constants::{CONTENT_DIR, DLL_NAME, ELDENRING_EXE, REPO_NAME, REPO_OWNER, REPO_PRIVATE_KEY},
+    injector::{get_pids_by_name, kill_process},
+};
 
 use const_format::formatcp;
 use semver::Version;
@@ -71,6 +74,10 @@ fn verify_signature(
 }
 
 fn update_from_asset(asset: &ReleaseAsset) {
+    for pid in get_pids_by_name(ELDENRING_EXE) {
+        kill_process(pid);
+    }
+
     let (exe_dir, content_dir, dll_path) = get_paths();
     let (tmp_archive, tmp_dir) = download_asset(asset);
     remove_old_content(content_dir, dll_path);
