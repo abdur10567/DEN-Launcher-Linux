@@ -42,6 +42,13 @@ fn open_process_by_pid(pid: u32) -> Option<HANDLE> {
 }
 
 pub fn kill_process(pid: u32) {
+    if std::env::var("DEN_DEBUG").is_ok() {
+        tracing::warn!(
+            "Skipping process {} termination, because DEN_DEBUG is set",
+            pid
+        );
+        return;
+    }
     open_process_by_pid(pid).and_then(|handle| {
         unsafe { TerminateProcess(handle, 1) }
             .map_err(|err| tracing::error!("Failed to terminate process: {:?}", err))
@@ -102,7 +109,7 @@ fn create_suspended_process(
 ) -> Result<PROCESS_INFORMATION, Box<dyn std::error::Error>> {
     let exe_path_cstr = std::ffi::CString::new(executable_path.to_str().ok_or("Invalid path")?)?;
 
-    let mut startup_info = STARTUPINFOA::default();
+    let startup_info = STARTUPINFOA::default();
     let mut process_info = PROCESS_INFORMATION::default();
 
     let cwd = executable_path.parent().ok_or("Invalid executable path")?;
@@ -118,7 +125,7 @@ fn create_suspended_process(
             CREATE_SUSPENDED | CREATE_NEW_PROCESS_GROUP,
             None,
             None,
-            &mut startup_info,
+            &startup_info,
             &mut process_info,
         )
     }?;
@@ -163,14 +170,14 @@ fn inject_dll(
         )?;
     }
 
-    tracing::info!(
+    tracing::debug!(
         "Wrote DLL path to target process memory, bytes written: {}",
         bytes_written
     );
 
-    let kernel32 = unsafe { GetModuleHandleA(PCSTR("kernel32.dll\0".as_ptr()))? };
+    let kernel32 = unsafe { GetModuleHandleA(PCSTR(b"kernel32.dll".as_ptr()))? };
     let load_library = unsafe {
-        GetProcAddress(kernel32, PCSTR("LoadLibraryW\0".as_ptr()))
+        GetProcAddress(kernel32, PCSTR(b"LoadLibraryW".as_ptr()))
             .ok_or("Failed to get LoadLibraryW address")
     }? as *const ();
 
@@ -179,7 +186,10 @@ fn inject_dll(
             process_info.hProcess,
             None,
             0,
-            Some(std::mem::transmute(load_library)),
+            Some(std::mem::transmute::<
+                *const (),
+                unsafe extern "system" fn(*mut std::ffi::c_void) -> u32,
+            >(load_library)),
             Some(str_addr),
             0,
             None,

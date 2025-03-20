@@ -1,4 +1,4 @@
-use dotenv_codegen::dotenv;
+use dotenvy_macro::dotenv;
 use std::collections::HashSet;
 use std::env;
 use std::sync::LazyLock;
@@ -39,8 +39,7 @@ pub static DEN_SAVE: LazyLock<String> =
 // constant 10.10.2024
 pub const OLD_SAVE_TIME_MARK: Duration = Duration::from_secs(1728507600u64);
 
-// pub const VALID_SOURCE_SAVE_FILE_EXTENSIONS: [&str; 4] = ["sl2", "co2", "160den", "170den"];
-pub const VALID_SOURCE_SAVE_FILE_EXTENSIONS: LazyLock<HashSet<&str>> =
+pub static VALID_SOURCE_SAVE_FILE_EXTENSIONS: LazyLock<HashSet<&str>> =
     LazyLock::new(|| HashSet::from(["sl2", "co2", "160den", "170den"]));
 
 pub static PROCESS_INJECTION_ACCESS: LazyLock<PROCESS_ACCESS_RIGHTS> = LazyLock::new(|| {

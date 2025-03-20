@@ -15,9 +15,6 @@ pub fn get_steam_id() -> u64 {
             std::thread::sleep(std::time::Duration::from_secs(10));
             std::process::exit(1);
         }
-        Ok(steam_id) => {
-            let steam_id = steam_id as u64 + STEAM_ID_IDENT;
-            steam_id
-        }
+        Ok(steam_id) => steam_id as u64 + STEAM_ID_IDENT,
     }
 }

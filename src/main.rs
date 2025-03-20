@@ -21,10 +21,7 @@ fn main() {
 
     tracing::info!("Starting DenLauncher v{}", env!("CARGO_PKG_VERSION"));
 
-    if std::env::args()
-        .into_iter()
-        .any(|arg| arg == "--skip-update")
-    {
+    if std::env::args().any(|arg| arg == "--skip-update") {
         tracing::info!("Skipping update check...");
     } else {
         tracing::info!("Checking for updates...");

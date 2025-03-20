@@ -91,7 +91,7 @@ pub fn check_saves() {
             &s,
             s.parent()
                 .unwrap()
-                .join(&*SAVE_STEM)
+                .join(SAVE_STEM)
                 .with_extension(&*SAVE_EXTENSION),
         )
         .expect("Failed to copy save file");

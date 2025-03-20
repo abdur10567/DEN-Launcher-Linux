@@ -34,7 +34,7 @@ fn get_update() -> Option<Release> {
         "https://api.github.com/repos/{}/{}/releases",
         *REPO_OWNER, *REPO_NAME
     ))
-    .set("User-Agent", &formatcp!("denlauncher/{}", VERSION))
+    .set("User-Agent", formatcp!("denlauncher/{}", VERSION))
     .query("per_page", "20");
 
     if !REPO_PRIVATE_KEY.is_empty() {
@@ -49,8 +49,7 @@ fn get_update() -> Option<Release> {
 
     response
         .into_iter()
-        .filter(|r| bump_is_greater(VERSION, &r.tag_name.trim_start_matches("v")).unwrap_or(false))
-        .next()
+        .find(|r| bump_is_greater(VERSION, r.tag_name.trim_start_matches("v")).unwrap_or(false))
 }
 
 // #[cfg(not(debug_assertions))]
@@ -70,7 +69,7 @@ fn verify_signature(
 
     zipsign_api::verify::verify_zip(archive, &keys, Some(context))
         .map_err(zipsign_api::ZipsignError::from)?;
-    return Ok(());
+    Ok(())
 }
 
 fn update_from_asset(asset: &ReleaseAsset) {
@@ -102,7 +101,7 @@ fn download_asset(asset: &ReleaseAsset) -> (std::fs::File, tempfile::TempDir) {
     let mut request = ureq::get(&asset.url)
         .set(
             "User-Agent",
-            &formatcp!("denlauncher/{}", env!("CARGO_PKG_VERSION")),
+            formatcp!("denlauncher/{}", env!("CARGO_PKG_VERSION")),
         )
         .set("Accept", "application/octet-stream");
     if !REPO_PRIVATE_KEY.is_empty() {
@@ -212,7 +211,7 @@ fn handle_file_entry(
     {
         Some(entry.path().to_path_buf())
     } else {
-        std::fs::copy(entry.path(), &target_path).expect("Failed to copy file");
+        std::fs::copy(entry.path(), target_path).expect("Failed to copy file");
         None
     }
 }
@@ -224,12 +223,13 @@ pub fn start_updater() {
             release.tag_name.trim_start_matches("v")
         );
 
-        release
+        if let Some(asset) = release
             .assets
             .iter()
-            .filter(|asset| asset.name.ends_with(".zip"))
-            .next()
-            .map(|asset| update_from_asset(asset));
+            .find(|asset| asset.name.ends_with(".zip"))
+        {
+            update_from_asset(asset)
+        }
         tracing::info!("Update complete, please restart the launcher");
         std::thread::sleep(std::time::Duration::from_secs(5));
         std::process::exit(0);
