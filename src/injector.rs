@@ -175,9 +175,9 @@ fn inject_dll(
         bytes_written
     );
 
-    let kernel32 = unsafe { GetModuleHandleA(PCSTR(b"kernel32.dll".as_ptr()))? };
+    let kernel32 = unsafe { GetModuleHandleA(PCSTR(b"kernel32.dll\0".as_ptr()))? };
     let load_library = unsafe {
-        GetProcAddress(kernel32, PCSTR(b"LoadLibraryW".as_ptr()))
+        GetProcAddress(kernel32, PCSTR(b"LoadLibraryW\0".as_ptr()))
             .ok_or("Failed to get LoadLibraryW address")
     }? as *const ();
 
@@ -195,19 +195,22 @@ fn inject_dll(
             None,
         )?;
 
-        tracing::info!("DLL injected, waiting for thread completion");
+        tracing::debug!("DLL injected, waiting for thread completion");
         WaitForSingleObject(thread_handle, INFINITE);
 
         VirtualFreeEx(process_info.hProcess, str_addr, 0, MEM_RELEASE)?;
 
-        let mut base_address: u32 = 0;
-        GetExitCodeThread(thread_handle, &mut base_address as *mut u32)?;
+        let mut load_offset: u32 = 0;
+        GetExitCodeThread(thread_handle, &mut load_offset)?;
 
-        if base_address == 0 {
+        if load_offset == 0 {
             return Err("DLL injection failed - LoadLibraryW returned NULL".into());
         }
 
-        tracing::info!("DLL successfully loaded at: {:#016x}", base_address);
+        tracing::debug!(
+            "DLL successfully loaded at: eldenring.exe+0x{:#018x}",
+            load_offset
+        );
         CloseHandle(thread_handle)?;
     }
 
