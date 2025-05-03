@@ -40,7 +40,7 @@ pub fn den_panic_hook(panic_info: &std::panic::PanicHookInfo) {
             reason
         );
     } else {
-        message = format!("A panic occurred\nReason: {}", reason);
+        message = format!("A panic occurred\nReason: {reason}");
     }
 
     let mut message_utf16: Vec<u16> = message.encode_utf16().collect();

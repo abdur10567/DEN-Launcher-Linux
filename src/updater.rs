@@ -235,3 +235,19 @@ pub fn start_updater() {
         std::process::exit(0);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bump_is_greater() {
+        assert_eq!(bump_is_greater("1.0.0", "1.0.1"), Some(true));
+        assert_eq!(bump_is_greater("1.0.1", "1.0.0"), Some(false));
+        assert_eq!(bump_is_greater("1.0.0", "1.0.0"), Some(false));
+        assert_eq!(bump_is_greater("1.0.0", "invalid"), None);
+        assert_eq!(bump_is_greater("invalid", "1.0.0"), None);
+        assert_eq!(bump_is_greater("2.0.0-beta.10", "2.0.0-beta.9"), Some(false));
+        assert_eq!(bump_is_greater("2.0.0-beta9", "2.0.0-beta.10"), Some(false));
+    }
+}
