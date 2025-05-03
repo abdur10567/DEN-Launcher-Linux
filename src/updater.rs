@@ -249,5 +249,6 @@ mod tests {
         assert_eq!(bump_is_greater("invalid", "1.0.0"), None);
         assert_eq!(bump_is_greater("2.0.0-beta.10", "2.0.0-beta.9"), Some(false));
         assert_eq!(bump_is_greater("2.0.0-beta9", "2.0.0-beta.10"), Some(false));
+        assert_eq!(bump_is_greater("2.0.0-rc.1", "2.0.0-rc.1+patch.1"), Some(true));
     }
 }
