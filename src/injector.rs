@@ -1,9 +1,13 @@
 use windows::Win32::Foundation::{CloseHandle, HANDLE};
 
+use crate::constants::{
+    CONTENT_DIR, DLL_NAME, ELDENRING_EXE, ELDENRING_ID, PROCESS_INJECTION_ACCESS,
+};
 use std::ffi::c_void;
 use std::path::{Path, PathBuf};
 use steamlocate::SteamDir;
-use windows::core::{PCSTR, PCWSTR, PSTR};
+use windows::core::s;
+use windows::core::{PCSTR, PCWSTR};
 use windows::Win32::System::Diagnostics::Debug::WriteProcessMemory;
 use windows::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
 use windows::Win32::System::Memory::{
@@ -13,10 +17,6 @@ use windows::Win32::System::Threading::{
     CreateProcessA, CreateRemoteThread, GetExitCodeThread, OpenProcess, TerminateProcess,
     WaitForSingleObject, CREATE_NEW_PROCESS_GROUP, CREATE_SUSPENDED, INFINITE, PROCESS_INFORMATION,
     STARTUPINFOA,
-};
-
-use crate::constants::{
-    CONTENT_DIR, DLL_NAME, ELDENRING_EXE, ELDENRING_ID, PROCESS_INJECTION_ACCESS,
 };
 
 fn locate_executable() -> PathBuf {
@@ -118,7 +118,7 @@ fn create_suspended_process(
     unsafe {
         CreateProcessA(
             PCSTR(exe_path_cstr.as_ptr() as *const u8),
-            PSTR::null(),
+            None,
             None,
             None,
             false,
@@ -175,10 +175,9 @@ fn inject_dll(
         bytes_written
     );
 
-    let kernel32 = unsafe { GetModuleHandleA(PCSTR(b"kernel32.dll\0".as_ptr()))? };
+    let kernel32 = unsafe { GetModuleHandleA(s!("kernel32.dll"))? };
     let load_library = unsafe {
-        GetProcAddress(kernel32, PCSTR(b"LoadLibraryW\0".as_ptr()))
-            .ok_or("Failed to get LoadLibraryW address")
+        GetProcAddress(kernel32, s!("LoadLibraryW")).ok_or("Failed to get LoadLibraryW address")
     }? as *const ();
 
     unsafe {
@@ -208,7 +207,7 @@ fn inject_dll(
         }
 
         tracing::debug!(
-            "DLL successfully loaded at: eldenring.exe+0x{:#018x}",
+            "DLL successfully loaded at: eldenring.exe + {:#018x}",
             load_offset
         );
         CloseHandle(thread_handle)?;
