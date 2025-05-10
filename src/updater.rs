@@ -41,11 +41,19 @@ fn get_update() -> Option<Release> {
         request = request.set("Authorization", &format!("token {}", *REPO_PRIVATE_KEY));
     }
 
-    let response: Vec<Release> = request
+    let response = request
         .call()
-        .expect("Failed to fetch release")
-        .into_json()
-        .expect("Failed to parse release JSON");
+        .map_err(|e| {
+            tracing::error!("Failed to fetch releases: {}", e);
+            e
+        })
+        .ok()?
+        .into_json::<Vec<Release>>()
+        .map_err(|e| {
+            tracing::error!("Failed to parse JSON: {}", e);
+            e
+        })
+        .ok()?;
 
     response
         .into_iter()
@@ -247,8 +255,14 @@ mod tests {
         assert_eq!(bump_is_greater("1.0.0", "1.0.0"), Some(false));
         assert_eq!(bump_is_greater("1.0.0", "invalid"), None);
         assert_eq!(bump_is_greater("invalid", "1.0.0"), None);
-        assert_eq!(bump_is_greater("2.0.0-beta.10", "2.0.0-beta.9"), Some(false));
+        assert_eq!(
+            bump_is_greater("2.0.0-beta.10", "2.0.0-beta.9"),
+            Some(false)
+        );
         assert_eq!(bump_is_greater("2.0.0-beta9", "2.0.0-beta.10"), Some(false));
-        assert_eq!(bump_is_greater("2.0.0-rc.1", "2.0.0-rc.1+patch.1"), Some(true));
+        assert_eq!(
+            bump_is_greater("2.0.0-rc.1", "2.0.0-rc.1+patch.1"),
+            Some(true)
+        );
     }
 }
