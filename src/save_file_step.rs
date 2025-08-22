@@ -4,6 +4,9 @@ use crate::constants::{
 use crate::{constants::SAVE_EXTENSION, steam_id};
 use cli_select::Select;
 use std::io::stdout;
+use std::thread;
+use std::env;
+use std::time::Duration;
 use std::{
     collections::HashMap,
     ffi::OsStr,
@@ -13,10 +16,37 @@ use std::{
 
 fn get_save_list() -> Option<Vec<PathBuf>> {
     let steam_id = steam_id::get_steam_id();
-    let appdata = std::env::var("APPDATA").expect("APPDATA not found");
-    let save_file_path = Path::new(&appdata)
-        .join("EldenRing")
-        .join(steam_id.to_string());
+    let save_file_path: PathBuf;
+
+    let running_under_linux = std::env::var("WINEPREFIX").is_ok()
+                    || std::env::var("PROTON_NO_ESYNC").is_ok();
+
+    if running_under_linux{
+        println!("linux block");
+
+        //build save_file_path
+        let user = env::var("USER").unwrap();
+        let home_dir = format!("/home/{}", user);
+        let appdata = format!("{}{}", home_dir, "/.local/share/Steam/steamapps/compatdata/1245620/pfx/drive_c/users/steamuser/AppData/Roaming/");
+        let full_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
+
+        save_file_path = PathBuf::from(full_path);
+
+        //check if its valid
+        if !save_file_path.exists(){
+            println!("save_file_path path does not exist");
+            thread::sleep(Duration::from_secs(10));
+            std::process::exit(1);
+        }
+    } else {
+        println!("windows block");
+        //build save_file_path for windows
+        let appdata = std::env::var("APPDATA").expect("APPDATA not found");
+        save_file_path = Path::new(&appdata)
+            .join("EldenRing")
+            .join(steam_id.to_string());
+    }
+
 
     tracing::info!("Save file path: {:?}", save_file_path);
     let mut save_files = Vec::new();
@@ -68,6 +98,9 @@ pub fn check_saves() {
         })
         .unwrap_or_default();
 
+    
+    //this should be run only under windows
+    //for linux, if there is a save file in the den saves location, ignore this.
     if saves.is_empty() {
         tracing::warn!(
             "No existing save files found, game will create and use {}",
@@ -75,6 +108,9 @@ pub fn check_saves() {
         );
         return;
     }
+
+
+
     // iterate over save files exit function if valid save file is found
     for save in &saves {
         let save_name = save.file_name().unwrap().to_str().unwrap();
