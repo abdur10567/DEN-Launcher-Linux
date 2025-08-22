@@ -15,10 +15,11 @@ zipsign-api = "0.1.2"
 semver = "1.0.25"
 self-replace = "1.5.0"
 const_format = "0.2.34"
-serde = "1.0.217"
+serde = { version = "1.0.217", features = ["derive"] }
 walkdir = "2.5.0"
 winreg = "0.55.0"
 cli_select = "0.1.6"
+keyvalues-parser = "0.1.0" # added for .vdf file parsing
 
 [dependencies.sysinfo]
 version = "0.33.1"
