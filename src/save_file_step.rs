@@ -24,8 +24,6 @@ fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
                     || std::env::var("PROTON_NO_ESYNC").is_ok();
 
     if running_under_linux{
-        println!("linux block");
-
         //build save_file_path
         let user = env::var("USER").unwrap();
         let home_dir = format!("/home/{}", user);
@@ -36,12 +34,11 @@ fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
 
         //check if its valid
         if !save_file_path.exists(){
-            println!("save_file_path path does not exist");
+            tracing::error!("The path {:?} does not exist", save_file_path);
             thread::sleep(Duration::from_secs(10));
             std::process::exit(1);
         }
     } else {
-        println!("windows block");
         //build save_file_path for windows
         let appdata = std::env::var("APPDATA").expect("APPDATA not found");
         save_file_path = Path::new(&appdata)
@@ -76,7 +73,6 @@ fn get_den_save_location(steam_id: u64) -> String {
     //read and parse contents
     let contents = fs::read(&path).unwrap_or_else(|_| {
         tracing::error!("Failed to locate Steam shortcuts.vdf at {}", path);
-        println!("Failed to locate Steam shortcuts.vdf at {}", path);
         thread::sleep(Duration::from_secs(10));
         std::process::exit(1);
     });
@@ -87,11 +83,10 @@ fn get_den_save_location(steam_id: u64) -> String {
         shortcuts_vec.iter()
             .find(|shortcut| shortcut.app_name == "DEN-Launcher.exe")
             .map(|shortcut| {
-                println!("Found DEN-Launcher.exe with app_id: {}", shortcut.app_id);
                 shortcut.app_id
            })
     } else {
-        tracing::error!("Failed to parse shortcuts");
+        tracing::error!("Failed to parse shortcuts.vdf");
         None
     };
 
@@ -103,7 +98,6 @@ fn get_den_save_location(steam_id: u64) -> String {
         ),
         None => {
             tracing::error!("Could not determine DEN-Launcher App ID");
-            println!("Failed to find DEN-Launcher App ID");
             thread::sleep(Duration::from_secs(10));
             std::process::exit(1);
         }
@@ -202,14 +196,14 @@ pub fn check_saves() {
             let save_name = save.file_name().unwrap().to_str().unwrap();
             if save_name.eq(&format!("{}.{}", SAVE_STEM, &*SAVE_EXTENSION)) {
                 tracing::info!("Found valid save file: {:?}", save);
-                //Copy and overwrite the ER000.170 save file in the Elden Ring save folder aka sync
-                let destination_file = format!("{}/ER0000.170den", elden_ring_save_path);
+                //Copy and overwrite the ER000.dentest save file in the Elden Ring save folder aka sync
+                let destination_file = format!("{}/ER0000.dentest", elden_ring_save_path);
                 match std::fs::copy(save, &destination_file) {
                     Ok(_) => {
                         tracing::info!("Successfully copied save file to: {}", destination_file);
                     },
                     Err(e) => {
-                        tracing::error!("Failed to sync .170den save file with one in Elden Ring folder: {}", e);
+                        tracing::error!("Failed to sync .dentest save file with one in Elden Ring folder: {}", e);
                     }
                 }       
                 return;
@@ -228,26 +222,26 @@ pub fn check_saves() {
             return;
         }
 
-        //Since there are some, check for a .170den file
+        //Since there are some, check for a .dentest file
         //if one is found, copy it to den save location
         for save in &saves {
             let save_name = save.file_name().unwrap().to_str().unwrap();
             if save_name.eq(&format!("{}.{}", SAVE_STEM, &*SAVE_EXTENSION)) {
                 tracing::info!("Found valid save file in Elden Ring save location: {:?}", save);
-                let destination_file = format!("{}/ER0000.170den", den_path);
+                let destination_file = format!("{}/ER0000.dentest", den_path);
                 match std::fs::copy(save, &destination_file) {
                     Ok(_) => {
                         tracing::info!("Successfully copied save file to: {}", destination_file);
                     },
                     Err(e) => {
-                        tracing::error!("Failed to copy .170den save file from Elden Ring save folder to DEN save folder: {}", e);
+                        tracing::error!("Failed to copy .dentest save file from Elden Ring save folder to DEN save folder: {}", e);
                     }
                 }
                 return;
             }
         }
         
-        //since no 170den file either elden ring or den folder, let user pick a base save
+        //since no .dentest file was found in either elden ring or den folder, let user pick a base save
         let save = pick_base_save(saves);
         if let Some(s) = save {
             tracing::debug!("Selected save: {:?}", s);
