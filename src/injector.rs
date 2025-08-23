@@ -1,7 +1,7 @@
 use windows::Win32::Foundation::{CloseHandle, HANDLE};
 
 use crate::constants::{
-    CONTENT_DIR, DLL_NAME, ELDENRING_EXE, ELDENRING_ID, PROCESS_INJECTION_ACCESS,
+    CONTENT_DIR, DLL_NAME, ELDENRING_EXE, ELDENRING_ID, PROCESS_INJECTION_ACCESS, 
 };
 use std::ffi::c_void;
 use std::path::{Path, PathBuf};
