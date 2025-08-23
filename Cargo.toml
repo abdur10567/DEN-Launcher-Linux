@@ -20,6 +20,8 @@ walkdir = "2.5.0"
 winreg = "0.55.0"
 cli_select = "0.1.6"
 keyvalues-parser = "0.1.0" # added for .vdf file parsing
+steam_shortcuts_util = "1.0.0" # added for parsing binary .vdf file
+
 
 [dependencies.sysinfo]
 version = "0.33.1"

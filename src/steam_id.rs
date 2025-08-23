@@ -20,7 +20,7 @@ pub fn get_steam_id() -> u64 {
             std::process::exit(1);
         });
         let home_dir = format!("/home/{}", user);
-        let path = format!("{}/.steam/steam/config/loginusers.vdf", home_dir);
+        let path = format!("{}/.local/share/Steam/config/loginusers.vdf", home_dir);
 
         let contents = fs::read_to_string(&path).unwrap_or_else(|_| {
             tracing::error!("Failed to locate Steam loginusers.vdf at {}", path);

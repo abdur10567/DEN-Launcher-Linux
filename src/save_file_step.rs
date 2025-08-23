@@ -177,6 +177,9 @@ pub fn check_saves() {
         let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, ELDENRING_ID);
         let elden_ring_save_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
         let den_path = get_den_save_location(steam_id);
+        // Create the den save directory if it doesn't exist
+        std::fs::create_dir_all(&den_path)
+            .expect("Failed to create den save directory");
 
         //first get save files in the linux den location
         let saves_linux: Vec<PathBuf> = get_save_list_linux_den(steam_id)
@@ -248,6 +251,8 @@ pub fn check_saves() {
         let save = pick_base_save(saves);
         if let Some(s) = save {
             tracing::debug!("Selected save: {:?}", s);
+
+
             let destination = PathBuf::from(&den_path)
                 .join(SAVE_STEM)
                 .with_extension(&*SAVE_EXTENSION);
