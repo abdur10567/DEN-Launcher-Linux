@@ -7,6 +7,8 @@ use std::io::stdout;
 use std::thread;
 use std::env;
 use std::time::Duration;
+use steam_shortcuts_util::parse_shortcuts;
+use steam_shortcuts_util::shortcuts_to_bytes;
 use std::{
     collections::HashMap,
     ffi::OsStr,
@@ -14,9 +16,26 @@ use std::{
     time::UNIX_EPOCH,
 };
 
-fn get_save_list() -> Option<Vec<PathBuf>> {
-    let steam_id = steam_id::get_steam_id();
+const STEAM_ID_IDENT: u64 = 0x0110_0001_0000_0000;
+
+fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
     let save_file_path: PathBuf;
+        // Also check some common ones
+    let vars_to_check = [
+        "SteamAppId", 
+        "SteamGameId", 
+        "SteamClientLaunch",
+        "STEAM_COMPAT_CLIENT_INSTALL_PATH",
+        "STEAM_RUNTIME"
+    ];
+    
+    for var in vars_to_check {
+        match env::var(var) {
+            Ok(value) => println!("{}: {}", var, value),
+            Err(_) => println!("{}: Not set", var),
+        }
+    }
+    thread::sleep(Duration::from_secs(10));
 
     let running_under_linux = std::env::var("WINEPREFIX").is_ok()
                     || std::env::var("PROTON_NO_ESYNC").is_ok();
@@ -63,6 +82,56 @@ fn get_save_list() -> Option<Vec<PathBuf>> {
     Some(save_files)
 }
 
+fn get_save_list_linux_den(steam_id: u64) -> Option<Vec<PathBuf>> {
+    let steam3_id = steam_id - STEAM_ID_IDENT;
+
+    //build path for shortcuts.vdf
+    let user = env::var("USER").unwrap();
+    let home_dir = format!("/home/{}", user);
+    let path = format!("{}/.local/share/Steam/userdata/{}/config/shortcuts.vdf", home_dir, steam3_id);
+
+    //read and parse contents
+    let contents = fs::read(&path).unwrap_or_else(|_| {
+        tracing::error!("Failed to locate Steam shortcuts.vdf at {}", path);
+        println!("Failed to locate Steam shortcuts.vdf at {}", path);
+        thread::sleep(Duration::from_secs(10));
+        std::process::exit(1);
+    });
+    let shortcuts = parse_shortcuts(contents.as_slice());
+
+    //Find the app_id of DEN-Launcher.exe
+    let den_steam_app_id: Option<u32> = if let Ok(shortcuts_vec) = &shortcuts {
+        shortcuts_vec.iter()
+            .find(|shortcut| shortcut.app_name == "DEN-Launcher.exe")
+            .map(|shortcut| {
+                println!("Found DEN-Launcher.exe with app_id: {}", shortcut.app_id);
+                shortcut.app_id
+           })
+    } else {
+        tracing::error!("Failed to parse shortcuts");
+        None
+    };
+
+    //Now build the path for the den save file location
+    let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, DEN_steam_app_Id);
+    let save_file_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
+
+    //Return vector of all saves in den save file location
+    tracing::info!("Save file path linux den: {:?}", save_file_path);
+    let mut save_files = Vec::new();
+    let save_stem = OsStr::new(SAVE_STEM);
+    for entry in save_file_path.read_dir().ok()? {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            continue;
+        }
+        if path.file_stem() == Some(save_stem) {
+            save_files.push(path);
+        }
+    }
+    Some(save_files);
+}
+
 fn pick_base_save(saves: Vec<PathBuf>) -> Option<PathBuf> {
     tracing::warn!("No {} save file found", &*DEN_SAVE);
     println!("Select a save file to use as a base:");
@@ -83,7 +152,8 @@ fn pick_base_save(saves: Vec<PathBuf>) -> Option<PathBuf> {
 }
 
 pub fn check_saves() {
-    let saves: Vec<PathBuf> = get_save_list()
+    let steam_id = steam_id::get_steam_id();
+    let saves: Vec<PathBuf> = get_save_list(steam_id)
         .map(|s| {
             s.into_iter()
                 .inspect(|f| tracing::info!("Checking save file: {:?}", f))
@@ -98,38 +168,58 @@ pub fn check_saves() {
         })
         .unwrap_or_default();
 
-    
-    //this should be run only under windows
-    //for linux, if there is a save file in the den saves location, ignore this.
-    if saves.is_empty() {
-        tracing::warn!(
-            "No existing save files found, game will create and use {}",
-            &*DEN_SAVE
-        );
-        return;
-    }
+    let running_under_linux = std::env::var("WINEPREFIX").is_ok()
+                    || std::env::var("PROTON_NO_ESYNC").is_ok();
 
-
-
-    // iterate over save files exit function if valid save file is found
-    for save in &saves {
-        let save_name = save.file_name().unwrap().to_str().unwrap();
-        if save_name.eq(&format!("{}.{}", SAVE_STEM, &*SAVE_EXTENSION)) {
-            tracing::info!("Found valid save file: {:?}", save);
+    if running_under_linux{
+        println!("linux block");
+        let saves: Vec<PathBuf> = get_save_list_linux_den()
+            .map(|s| {
+                s.into_iter()
+                    .inspect(|f| tracing::info!("Checking save file: {:?}", f))
+                    .filter(|f| {
+                        f.metadata().unwrap().modified().unwrap() >= UNIX_EPOCH + OLD_SAVE_TIME_MARK
+                    })
+                    .filter(|f| {
+                        let ext = f.extension().unwrap().to_str().unwrap();
+                        VALID_SOURCE_SAVE_FILE_EXTENSIONS.contains(&ext) || ext == *SAVE_EXTENSION
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+    } else {
+        println!("windows block");
+        if saves.is_empty() {
+            tracing::warn!(
+                "No existing save files found, game will create and use {}",
+                &*DEN_SAVE
+            );
             return;
         }
-    }
 
-    let save = pick_base_save(saves);
-    if let Some(s) = save {
-        tracing::debug!("Selected save: {:?}", s);
-        std::fs::copy(
-            &s,
-            s.parent()
-                .unwrap()
-                .join(SAVE_STEM)
-                .with_extension(&*SAVE_EXTENSION),
-        )
-        .expect("Failed to copy save file");
+
+
+        // iterate over save files exit function if valid save file is found
+        for save in &saves {
+            let save_name = save.file_name().unwrap().to_str().unwrap();
+            if save_name.eq(&format!("{}.{}", SAVE_STEM, &*SAVE_EXTENSION)) {
+                tracing::info!("Found valid save file: {:?}", save);
+                return;
+            }
+        }
+
+        let save = pick_base_save(saves);
+        if let Some(s) = save {
+            tracing::debug!("Selected save: {:?}", s);
+            std::fs::copy(
+                &s,
+                s.parent()
+                    .unwrap()
+                    .join(SAVE_STEM)
+                    .with_extension(&*SAVE_EXTENSION),
+            )
+            .expect("Failed to copy save file");
+        }
     }
 }
+    

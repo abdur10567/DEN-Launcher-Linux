@@ -8,7 +8,6 @@ use std::time::Duration;
 use keyvalues_parser::{Vdf, Value};
 
 
-//For windows only
 const STEAM_ID_IDENT: u64 = 0x0110_0001_0000_0000;
 
 pub fn get_steam_id() -> u64 {
@@ -50,7 +49,7 @@ pub fn get_steam_id() -> u64 {
             None
         });
 
-         // Return the u64 or exit if none found
+        // Return the u64 or exit if none found
         most_recent_steam_id.unwrap_or_else(|| {
             tracing::error!("No recent Steam user found");
             thread::sleep(Duration::from_secs(10));
