@@ -1,14 +1,14 @@
 use crate::constants::{
-    DEN_SAVE, OLD_SAVE_TIME_MARK, SAVE_STEM, VALID_SOURCE_SAVE_FILE_EXTENSIONS,
+    DEN_SAVE, OLD_SAVE_TIME_MARK, SAVE_STEM, VALID_SOURCE_SAVE_FILE_EXTENSIONS, ELDENRING_ID,
 };
 use crate::{constants::SAVE_EXTENSION, steam_id};
 use cli_select::Select;
 use std::io::stdout;
 use std::thread;
 use std::env;
+use std::fs;
 use std::time::Duration;
 use steam_shortcuts_util::parse_shortcuts;
-use steam_shortcuts_util::shortcuts_to_bytes;
 use std::{
     collections::HashMap,
     ffi::OsStr,
@@ -20,23 +20,6 @@ const STEAM_ID_IDENT: u64 = 0x0110_0001_0000_0000;
 
 fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
     let save_file_path: PathBuf;
-        // Also check some common ones
-    let vars_to_check = [
-        "SteamAppId", 
-        "SteamGameId", 
-        "SteamClientLaunch",
-        "STEAM_COMPAT_CLIENT_INSTALL_PATH",
-        "STEAM_RUNTIME"
-    ];
-    
-    for var in vars_to_check {
-        match env::var(var) {
-            Ok(value) => println!("{}: {}", var, value),
-            Err(_) => println!("{}: Not set", var),
-        }
-    }
-    thread::sleep(Duration::from_secs(10));
-
     let running_under_linux = std::env::var("WINEPREFIX").is_ok()
                     || std::env::var("PROTON_NO_ESYNC").is_ok();
 
@@ -46,7 +29,7 @@ fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
         //build save_file_path
         let user = env::var("USER").unwrap();
         let home_dir = format!("/home/{}", user);
-        let appdata = format!("{}{}", home_dir, "/.local/share/Steam/steamapps/compatdata/1245620/pfx/drive_c/users/steamuser/AppData/Roaming/");
+        let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, ELDENRING_ID);
         let full_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
 
         save_file_path = PathBuf::from(full_path);
@@ -82,7 +65,7 @@ fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
     Some(save_files)
 }
 
-fn get_save_list_linux_den(steam_id: u64) -> Option<Vec<PathBuf>> {
+fn get_den_save_location(steam_id: u64) -> String {
     let steam3_id = steam_id - STEAM_ID_IDENT;
 
     //build path for shortcuts.vdf
@@ -113,14 +96,31 @@ fn get_save_list_linux_den(steam_id: u64) -> Option<Vec<PathBuf>> {
     };
 
     //Now build the path for the den save file location
-    let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, DEN_steam_app_Id);
+    let appdata = match den_steam_app_id {
+        Some(app_id) => format!(
+            "{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/",
+            home_dir, app_id
+        ),
+        None => {
+            tracing::error!("Could not determine DEN-Launcher App ID");
+            println!("Failed to find DEN-Launcher App ID");
+            thread::sleep(Duration::from_secs(10));
+            std::process::exit(1);
+        }
+    };
+
     let save_file_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
+    save_file_path
+}
+
+fn get_save_list_linux_den(steam_id: u64) -> Option<Vec<PathBuf>> {
+    let save_file_path = get_den_save_location(steam_id);
 
     //Return vector of all saves in den save file location
     tracing::info!("Save file path linux den: {:?}", save_file_path);
     let mut save_files = Vec::new();
     let save_stem = OsStr::new(SAVE_STEM);
-    for entry in save_file_path.read_dir().ok()? {
+    for entry in std::fs::read_dir(&save_file_path).ok()? {
         let path = entry.unwrap().path();
         if path.is_dir() {
             continue;
@@ -129,7 +129,7 @@ fn get_save_list_linux_den(steam_id: u64) -> Option<Vec<PathBuf>> {
             save_files.push(path);
         }
     }
-    Some(save_files);
+    Some(save_files)
 }
 
 fn pick_base_save(saves: Vec<PathBuf>) -> Option<PathBuf> {
@@ -172,8 +172,14 @@ pub fn check_saves() {
                     || std::env::var("PROTON_NO_ESYNC").is_ok();
 
     if running_under_linux{
-        println!("linux block");
-        let saves: Vec<PathBuf> = get_save_list_linux_den()
+        let user = env::var("USER").unwrap();
+        let home_dir = format!("/home/{}", user);
+        let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, ELDENRING_ID);
+        let elden_ring_save_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
+        let den_path = get_den_save_location(steam_id);
+
+        //first get save files in the linux den location
+        let saves_linux: Vec<PathBuf> = get_save_list_linux_den(steam_id)
             .map(|s| {
                 s.into_iter()
                     .inspect(|f| tracing::info!("Checking save file: {:?}", f))
@@ -187,8 +193,73 @@ pub fn check_saves() {
                     .collect()
             })
             .unwrap_or_default();
+
+        //check for existing valid den save file and sync it if it exists. 
+        for save in &saves_linux {
+            let save_name = save.file_name().unwrap().to_str().unwrap();
+            if save_name.eq(&format!("{}.{}", SAVE_STEM, &*SAVE_EXTENSION)) {
+                tracing::info!("Found valid save file: {:?}", save);
+                //Copy and overwrite the ER000.170 save file in the Elden Ring save folder aka sync
+                let destination_file = format!("{}/ER0000.170den", elden_ring_save_path);
+                match std::fs::copy(save, &destination_file) {
+                    Ok(_) => {
+                        tracing::info!("Successfully copied save file to: {}", destination_file);
+                    },
+                    Err(e) => {
+                        tracing::error!("Failed to sync .170den save file with one in Elden Ring folder: {}", e);
+                    }
+                }       
+                return;
+            }
+        }
+
+        //No valid save in linux den found, so continue
+        //check for save files in elden ring save folder
+
+        //If none in Elden Ring folder 
+        if saves.is_empty() {
+            tracing::warn!(
+                "No existing save files found in Elden Ring save folder, game will create and use {}",
+                &*DEN_SAVE
+            );
+            return;
+        }
+
+        //Since there are some, check for a .170den file
+        //if one is found, copy it to den save location
+        for save in &saves {
+            let save_name = save.file_name().unwrap().to_str().unwrap();
+            if save_name.eq(&format!("{}.{}", SAVE_STEM, &*SAVE_EXTENSION)) {
+                tracing::info!("Found valid save file in Elden Ring save location: {:?}", save);
+                let destination_file = format!("{}/ER0000.170den", den_path);
+                match std::fs::copy(save, &destination_file) {
+                    Ok(_) => {
+                        tracing::info!("Successfully copied save file to: {}", destination_file);
+                    },
+                    Err(e) => {
+                        tracing::error!("Failed to copy .170den save file from Elden Ring save folder to DEN save folder: {}", e);
+                    }
+                }
+                return;
+            }
+        }
+        
+        //since no 170den file either elden ring or den folder, let user pick a base save
+        let save = pick_base_save(saves);
+        if let Some(s) = save {
+            tracing::debug!("Selected save: {:?}", s);
+            let destination = PathBuf::from(&den_path)
+                .join(SAVE_STEM)
+                .with_extension(&*SAVE_EXTENSION);
+            std::fs::copy(&s, &destination)
+                .expect("Failed to copy save file");
+        }
+
+
+
+        
     } else {
-        println!("windows block");
+        //windows block
         if saves.is_empty() {
             tracing::warn!(
                 "No existing save files found, game will create and use {}",
