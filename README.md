@@ -7,3 +7,7 @@
 5. In your **Steam Library**, right-click the game → **Properties** → **Compatibility**:
    - Check **"Force the use of a specific Steam Play compatibility tool"**
    - Select your version of **Proton**
+## 📝 Notes
+
+- Make sure **Proton** is installed via **Steam > Settings > Compatibility**.
+- For best results, use a recent version of **Proton** (e.g., **Proton 9** or **Proton GE**).
