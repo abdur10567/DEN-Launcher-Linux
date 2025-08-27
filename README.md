@@ -1,3 +1,5 @@
+## Description
+Linux support for Elden Ring DEN Maps Launcher.
 ## 🚀 Installation
 
 1. **Download** the latest **DEN** release from [here](https://github.com/DuelistEventNetwork/dentest/releases).
