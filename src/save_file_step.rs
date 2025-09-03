@@ -25,8 +25,7 @@ fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
 
     if running_under_linux{
         //build save_file_path
-        let user = env::var("USER").unwrap();
-        let home_dir = format!("/home/{}", user);
+        let home_dir = env::var("HOME").unwrap();
         let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, ELDENRING_ID);
         let full_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
 
@@ -66,8 +65,7 @@ fn get_den_save_location(steam_id: u64) -> String {
     let steam3_id = steam_id - STEAM_ID_IDENT;
 
     //build path for shortcuts.vdf
-    let user = env::var("USER").unwrap();
-    let home_dir = format!("/home/{}", user);
+    let home_dir = env::var("HOME").unwrap();
     let path = format!("{}/.local/share/Steam/userdata/{}/config/shortcuts.vdf", home_dir, steam3_id);
 
     //read and parse contents
@@ -166,8 +164,7 @@ pub fn check_saves() {
                     || std::env::var("PROTON_NO_ESYNC").is_ok();
 
     if running_under_linux{
-        let user = env::var("USER").unwrap();
-        let home_dir = format!("/home/{}", user);
+        let home_dir = env::var("HOME").unwrap();
         let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, ELDENRING_ID);
         let elden_ring_save_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
         let den_path = get_den_save_location(steam_id);

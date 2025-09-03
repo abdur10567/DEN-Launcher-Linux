@@ -14,12 +14,11 @@ pub fn get_steam_id() -> u64 {
     let running_under_linux = std::env::var("WINEPREFIX").is_ok() 
                         || std::env::var("PROTON_NO_ESYNC").is_ok();
     if running_under_linux {
-        let user = env::var("USER").unwrap_or_else(|_| {
-            eprintln!("USER environment variable not set");
+        let home_dir = env::var("HOME").unwrap_or_else(|_| {
+            eprintln!("HOME environment variable not set");
             thread::sleep(Duration::from_secs(10));
             std::process::exit(1);
         });
-        let home_dir = format!("/home/{}", user);
         let path = format!("{}/.local/share/Steam/config/loginusers.vdf", home_dir);
 
         let contents = fs::read_to_string(&path).unwrap_or_else(|_| {
