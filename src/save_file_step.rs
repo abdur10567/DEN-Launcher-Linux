@@ -25,9 +25,8 @@ fn get_save_list(steam_id: u64) -> Option<Vec<PathBuf>> {
 
     if running_under_linux{
         //build save_file_path
-        let user = env::var("USER").unwrap();
-        let home_dir = format!("/home/{}", user);
-        let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, ELDENRING_ID);
+        let steam_dir = env::var("STEAM_COMPAT_CLIENT_INSTALL_PATH").unwrap();
+        let appdata = format!("{}/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", steam_dir, ELDENRING_ID);
         let full_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
 
         save_file_path = PathBuf::from(full_path);
@@ -66,9 +65,8 @@ fn get_den_save_location(steam_id: u64) -> String {
     let steam3_id = steam_id - STEAM_ID_IDENT;
 
     //build path for shortcuts.vdf
-    let user = env::var("USER").unwrap();
-    let home_dir = format!("/home/{}", user);
-    let path = format!("{}/.local/share/Steam/userdata/{}/config/shortcuts.vdf", home_dir, steam3_id);
+    let steam_dir = env::var("STEAM_COMPAT_CLIENT_INSTALL_PATH").unwrap();
+    let path = format!("{}/userdata/{}/config/shortcuts.vdf", steam_dir, steam3_id);
 
     //read and parse contents
     let contents = fs::read(&path).unwrap_or_else(|_| {
@@ -93,8 +91,8 @@ fn get_den_save_location(steam_id: u64) -> String {
     //Now build the path for the den save file location
     let appdata = match den_steam_app_id {
         Some(app_id) => format!(
-            "{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/",
-            home_dir, app_id
+            "{}/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/",
+            steam_dir, app_id
         ),
         None => {
             tracing::error!("Could not determine DEN-Launcher App ID");
@@ -166,9 +164,8 @@ pub fn check_saves() {
                     || std::env::var("PROTON_NO_ESYNC").is_ok();
 
     if running_under_linux{
-        let user = env::var("USER").unwrap();
-        let home_dir = format!("/home/{}", user);
-        let appdata = format!("{}/.local/share/Steam/steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", home_dir, ELDENRING_ID);
+        let steam_dir = env::var("STEAM_COMPAT_CLIENT_INSTALL_PATH").unwrap();
+        let appdata = format!("{}steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/Roaming/", steam_dir, ELDENRING_ID);
         let elden_ring_save_path = format!("{}{}{}", appdata,"EldenRing/",steam_id );
         let den_path = get_den_save_location(steam_id);
         // Create the den save directory if it doesn't exist

@@ -1,6 +1,5 @@
 use winreg::enums::HKEY_CURRENT_USER;
 use winreg::RegKey;
-
 use std::env;
 use std::fs;
 use std::thread;
@@ -12,15 +11,14 @@ const STEAM_ID_IDENT: u64 = 0x0110_0001_0000_0000;
 
 pub fn get_steam_id() -> u64 {
     let running_under_linux = std::env::var("WINEPREFIX").is_ok() 
-                        || std::env::var("PROTON_NO_ESYNC").is_ok();
+        || std::env::var("PROTON_NO_ESYNC").is_ok();
     if running_under_linux {
-        let user = env::var("USER").unwrap_or_else(|_| {
-            eprintln!("USER environment variable not set");
+        let steam_dir = env::var("STEAM_COMPAT_CLIENT_INSTALL_PATH").unwrap_or_else(|_| {
+            eprintln!("STEAM_COMPAT_CLIENT_INSTALL_PATH environment variable not set");
             thread::sleep(Duration::from_secs(10));
             std::process::exit(1);
         });
-        let home_dir = format!("/home/{}", user);
-        let path = format!("{}/.local/share/Steam/config/loginusers.vdf", home_dir);
+        let path = format!("{}/config/loginusers.vdf", steam_dir);
 
         let contents = fs::read_to_string(&path).unwrap_or_else(|_| {
             tracing::error!("Failed to locate Steam loginusers.vdf at {}", path);
@@ -62,7 +60,7 @@ pub fn get_steam_id() -> u64 {
             .open_subkey("Software\\Valve\\Steam\\ActiveProcess")
             .unwrap();
 
-         match subkey.get_value::<u32, _>("ActiveUser") {
+        match subkey.get_value::<u32, _>("ActiveUser") {
             Err(_) | Ok(0) => {
                 tracing::error!("Failed to get Steam ID, is Steam running?");
                 std::thread::sleep(std::time::Duration::from_secs(10));
