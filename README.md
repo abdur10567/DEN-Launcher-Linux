@@ -3,7 +3,7 @@ Adds linux support to the Elden Ring DEN Maps launcher.
 
 # Installation
 
-1. **Download the latest DEN release** from [here](#).
+1. **Download the latest DEN release** from [here](https://github.com/DuelistEventNetwork/dentest/releases).
 2. **Extract** the `.zip` file anywhere on your computer.
 3. **Replace** the original `DEN-Launcher.exe` with the cross-platform launcher from the `releases` folder.
 4. **Add** the new `DEN-Launcher.exe` as a *non-Steam game* in your **Steam Library**.
