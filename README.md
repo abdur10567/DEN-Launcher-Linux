@@ -1,3 +1,6 @@
+# Description
+Adds linux support to the Elden Ring DEN Maps launcher.
+
 # Installation
 
 1. **Download the latest DEN release** from [here](#).
